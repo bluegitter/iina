@@ -369,7 +369,7 @@ class MiniPlayerWindowController: PlayerWindowController, NSPopoverDelegate {
     } else {
       // show
       isPlaylistVisible = true
-      player.mainWindow.playlistView.reloadData(playlist: true, chapters: true)
+      player.mainWindow.playlistView.reloadData(searchString: "", playlist: true, chapters: true)
 
       var newFrame = window.frame
       newFrame.origin.y -= DefaultPlaylistHeight

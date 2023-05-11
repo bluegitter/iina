@@ -33,6 +33,8 @@ class PrefAdvancedViewController: PreferenceViewController, PreferenceWindowEmbe
   var hasResizableWidth: Bool = false
 
   var options: [[String]] = []
+  
+
 
   override var sectionViews: [NSView] {
     return [headerView, loggingSettingsView, mpvSettingsView]

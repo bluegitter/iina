@@ -149,7 +149,7 @@ extension MainMenuActionHandler {
 
   @objc func menuPlaylistItem(_ sender: NSMenuItem) {
     let index = sender.tag
-    player.playFileInPlaylist(index)
+    player.playFileInPlaylist("", pos: index)
   }
 
   @objc func menuChapterSwitch(_ sender: NSMenuItem) {

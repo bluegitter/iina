@@ -114,7 +114,7 @@ class JavascriptAPIPlaylist: JavascriptAPI, JavascriptAPIPlaylistExportable {
       log("playlist.play: Invalid index.", level: .error)
       return
     }
-    player!.playFileInPlaylist(index)
+    player!.playFileInPlaylist("", pos: index)
   }
 
   func playNext() {

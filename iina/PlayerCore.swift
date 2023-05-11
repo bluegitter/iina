@@ -1086,9 +1086,25 @@ class PlayerCore: NSObject {
     getPlaylist()
   }
 
-  func playFileInPlaylist(_ pos: Int) {
-    mpv.setInt(MPVProperty.playlistPos, pos)
-    getPlaylist()
+  func playFileInPlaylist(_ searchString: String, pos: Int) {
+    let mpvItem = info.playlist[pos]
+    
+    let playlistCount = mpv.getInt(MPVProperty.playlistCount)
+    var realPos = 0
+    for index in 0..<playlistCount {
+//      let playlistItem = MPVPlaylistItem(filename: mpv.getString(MPVProperty.playlistNFilename(index))!,
+//                                         isCurrent: mpv.getFlag(MPVProperty.playlistNCurrent(index)),
+//                                         isPlaying: mpv.getFlag(MPVProperty.playlistNPlaying(index)),
+//                                         title: mpv.getString(MPVProperty.playlistNTitle(index)))
+      let fileName = mpv.getString(MPVProperty.playlistNFilename(index))
+      if (fileName == mpvItem.filename) {
+        realPos = index
+        break
+      }
+      
+    }
+    mpv.setInt(MPVProperty.playlistPos, realPos)
+    getPlaylist(searchString: searchString)
   }
 
   func navigateInPlaylist(nextMedia: Bool) {
@@ -1500,7 +1516,8 @@ class PlayerCore: NSObject {
     trackListChanged()
     // main thread stuff
     DispatchQueue.main.sync {
-      getPlaylist()
+      let playlistView = mainWindow.playlistView
+      getPlaylist(searchString: playlistView.searchFieldValue)
       getChapters()
       syncAbLoop()
       createSyncUITimer()
@@ -2036,6 +2053,32 @@ class PlayerCore: NSObject {
     }
   }
 
+  func getPlaylist(searchString: String) {
+    info.playlist.removeAll()
+    let playlistCount = mpv.getInt(MPVProperty.playlistCount)
+    for index in 0..<playlistCount {
+      let playlistItem = MPVPlaylistItem(filename: mpv.getString(MPVProperty.playlistNFilename(index))!,
+                                         isCurrent: mpv.getFlag(MPVProperty.playlistNCurrent(index)),
+                                         isPlaying: mpv.getFlag(MPVProperty.playlistNPlaying(index)),
+                                         title: mpv.getString(MPVProperty.playlistNTitle(index)))
+      if !searchString.isEmpty {
+//        let metadata = playlistItem.title
+        if let metadata = playlistItem.title {
+          let matchesSearch = metadata.lowercased().contains(searchString.lowercased())
+          
+          if matchesSearch {
+            info.playlist.append(playlistItem)
+            
+          }
+        }
+
+      } else {
+        info.playlist.append(playlistItem)
+        
+      }
+    }
+  }
+  
   func getChapters() {
     info.chapters.removeAll()
     let chapterCount = mpv.getInt(MPVProperty.chapterListCount)

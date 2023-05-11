@@ -16,7 +16,7 @@ fileprivate let MenuItemTagCopy = 602
 fileprivate let MenuItemTagPaste = 603
 fileprivate let MenuItemTagDelete = 604
 
-class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, SidebarViewController, NSMenuItemValidation {
+class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableViewDelegate, NSMenuDelegate, SidebarViewController, NSMenuItemValidation, NSSearchFieldDelegate {
 
   override var nibName: NSNib.Name {
     return NSNib.Name("PlaylistViewController")
@@ -73,6 +73,11 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
   @IBOutlet var addFileMenu: NSMenu!
   @IBOutlet weak var addBtn: NSButton!
   @IBOutlet weak var removeBtn: NSButton!
+  @IBOutlet weak var searchField: NSSearchField!
+
+  var searchFieldValue: String {
+         return searchField.stringValue
+     }
   
   private var playlistTotalLengthIsReady = false
   private var playlistTotalLength: Double? = nil
@@ -101,6 +106,7 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
       $0?.alternateImage?.isTemplate = true
     }
     
+    searchField.delegate = self
     deleteBtn.toolTip = NSLocalizedString("mini_player.delete", comment: "delete")
     loopBtn.toolTip = NSLocalizedString("mini_player.loop", comment: "loop")
     shuffleBtn.toolTip = NSLocalizedString("mini_player.shuffle", comment: "shuffle")
@@ -126,7 +132,7 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
     // nofitications
     playlistChangeObserver = NotificationCenter.default.addObserver(forName: .iinaPlaylistChanged, object: player, queue: OperationQueue.main) { [unowned self] _ in
       self.playlistTotalLengthIsReady = false
-      self.reloadData(playlist: true, chapters: false)
+      self.reloadData(searchString:"", playlist: true, chapters: false)
     }
 
     // register for double click action
@@ -146,10 +152,11 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
                                                  options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited, .mouseMoved],
                                                  owner: mainWindow, userInfo: ["obj": 0]))
     }
+
   }
 
   override func viewDidAppear() {
-    reloadData(playlist: true, chapters: true)
+    reloadData(searchString: "", playlist: true, chapters: true)
 
     let loopStatus = player.mpv.getString(MPVOption.PlaybackControl.loopPlaylist)
     loopBtn.state = (loopStatus == "inf" || loopStatus == "force") ? .on : .off
@@ -159,9 +166,9 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
     NotificationCenter.default.removeObserver(self.playlistChangeObserver!)
   }
 
-  func reloadData(playlist: Bool, chapters: Bool) {
+  func reloadData(searchString: String, playlist: Bool, chapters: Bool) {
     if playlist {
-      player.getPlaylist()
+      player.getPlaylist(searchString:searchString)
       playlistTableView.reloadData()
     }
     if chapters {
@@ -381,7 +388,23 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
   }
 
   // MARK: - IBActions
+  func searchFieldDidStartSearching(_ sender: NSSearchField) {
+    let searchString = sender.stringValue
+//    reloadData(searchString: searchString, playlist: true, chapters: false)
+  }
+  
+  func searchFieldDidEndSearching(_ sender: NSSearchField) {
 
+  }
+  
+  func controlTextDidEndEditing(_ obj: Notification) {
+        if let textField = obj.object as? NSTextField,
+           textField == searchField {
+//            print("Search field text: \(searchField.stringValue)")
+          reloadData(searchString: searchField.stringValue, playlist: true, chapters: false)
+        }
+  }
+  
   @IBAction func addToPlaylistBtnAction(_ sender: NSButton) {
     addFileMenu.popUp(positioning: nil, at: .zero, in: sender)
   }
@@ -395,7 +418,7 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
       let playableFiles = self.player.getPlayableFiles(in: urls)
       if playableFiles.count != 0 {
         self.player.addToPlaylist(paths: playableFiles.map { $0.path }, at: self.player.info.playlist.count)
-        self.player.mainWindow.playlistView.reloadData(playlist: true, chapters: false)
+        self.player.mainWindow.playlistView.reloadData(searchString:self.searchField.stringValue, playlist: true, chapters: false)
         self.player.sendOSD(.addToPlaylist(playableFiles.count))
       }
     }
@@ -405,7 +428,7 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
     Utility.quickPromptPanel("add_url") { url in
       if Regex.url.matches(url) {
         self.player.addToPlaylist(url)
-        self.player.mainWindow.playlistView.reloadData(playlist: true, chapters: false)
+        self.player.mainWindow.playlistView.reloadData(searchString:self.searchField.stringValue, playlist: true, chapters: false)
         self.player.sendOSD(.addToPlaylist(1))
       } else {
         Utility.showAlert("wrong_url_format")
@@ -419,12 +442,12 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
   }
 
   @IBAction func playlistBtnAction(_ sender: AnyObject) {
-    reloadData(playlist: true, chapters: false)
+    reloadData(searchString:searchField.stringValue, playlist: true, chapters: false)
     switchToTab(.playlist)
   }
 
   @IBAction func chaptersBtnAction(_ sender: AnyObject) {
-    reloadData(playlist: false, chapters: true)
+    reloadData(searchString:searchField.stringValue, playlist: false, chapters: true)
     switchToTab(.chapters)
   }
 
@@ -440,7 +463,7 @@ class PlaylistViewController: NSViewController, NSTableViewDataSource, NSTableVi
   @objc func performDoubleAction(sender: AnyObject) {
     guard let tv = sender as? NSTableView, tv.numberOfSelectedRows > 0 else { return }
     if tv == playlistTableView {
-      player.playFileInPlaylist(tv.selectedRow)
+      player.playFileInPlaylist(searchField.stringValue, pos: tv.selectedRow)
     } else {
       let index = tv.selectedRow
       player.playChapter(index)

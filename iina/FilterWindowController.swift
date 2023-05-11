@@ -414,8 +414,14 @@ class NewFilterSheetViewController: NSViewController, NSTableViewDelegate, NSTab
       stackView.addArrangedSubview(input)
       self.currentBindings[name] = input
     }
-    for name in preset.paramOrder {
-      generateInputs(name, preset.params[name]!)
+    if let paramOrder = preset.paramOrder {
+      for name in paramOrder {
+        generateInputs(name, preset.params[name]!)
+      }
+    } else {
+      for (name, param) in preset.params {
+        generateInputs(name, param)
+      }
     }
   }
 
